@@ -12,7 +12,7 @@ unit, and it is not affiliated with Dolby Laboratories.
 In REAPER: Extensions → ReaPack → Import repositories, and paste
 
 ```
-https://github.com/<user>/<repo>/raw/main/index.xml
+https://github.com/sguyader/ReaperFX/raw/main/index.xml
 ```
 
 Then Extensions → ReaPack → Browse packages, and install **A-Lift**.
@@ -59,3 +59,8 @@ The window is resizable and the GUI scales with it.
 The GUI is drawn with the tk-gui-tools JSFX library
 (`Dynamics/tk_gui_tools.jsfx-inc`), which is free to use and share with free
 JSFX plugins; see the notice at the top of that file.
+
+## License
+
+MIT (see `LICENSE`) for everything except `tk_gui_tools.jsfx-inc`, which
+remains under its own terms.
