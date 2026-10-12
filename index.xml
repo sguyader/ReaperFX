@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="ReaperFX" commit="f0e10db8e06ac54d03c6a80532e66a72b73e5337">
+  <category name="Dynamics">
+    <reapack name="A-Lift.jsfx" type="effect" desc="A-Lift (four-band encode lift)">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel0 \b \fs34 A-Lift\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Four-band "encode-only" lift, in the spirit of running a source through an A-type noise-reduction encoder without decoding it. Each band gets about +10 dB well below Threshold (about +14 dB at the very top), fading as the signal gets louder.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Custom GUI with a per-band lift meter. Knobs: drag (Shift = fine), mouse wheel, double-click to reset; click a value to type it. LINK THR trims Output while you turn Threshold so the level stays roughly constant.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 GUI widgets: tk-gui-tools library (tk_gui_tools.jsfx-inc), installed alongside the plugin.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="sguyader" time="2026-10-12T00:41:38Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source>https://github.com/sguyader/ReaperFX/raw/f0e10db8e06ac54d03c6a80532e66a72b73e5337/Dynamics/A-Lift.jsfx</source>
+        <source file="tk_gui_tools.jsfx-inc">https://github.com/sguyader/ReaperFX/raw/f0e10db8e06ac54d03c6a80532e66a72b73e5337/Dynamics/tk_gui_tools.jsfx-inc</source>
+      </version>
+    </reapack>
+  </category>
+</index>
