@@ -1,0 +1,368 @@
+desc: A-Lift (four-band encode lift)
+author: sguyader
+version: 1.0.0
+changelog: Initial release
+provides: tk_gui_tools.jsfx-inc
+about:
+  # A-Lift
+  Four-band "encode-only" lift, in the spirit of running a source through an
+  A-type noise-reduction encoder without decoding it. Each band gets about
+  +10 dB well below Threshold (about +14 dB at the very top), fading as the
+  signal gets louder.
+
+  Custom GUI with a per-band lift meter. Knobs: drag (Shift = fine), mouse
+  wheel, double-click to reset; click a value to type it. LINK THR trims
+  Output while you turn Threshold so the level stays roughly constant.
+
+  GUI widgets: tk-gui-tools library (tk_gui_tools.jsfx-inc), installed
+  alongside the plugin.
+//tags: dynamics enhancer exciter
+//
+// Four-band "encode-only" lift, in the spirit of running a source through an
+// A-type noise-reduction encoder without decoding it. Behavioural model, same
+// algorithm as the A-Lift VST3/AU.
+//
+// Bands: <80 Hz | 80 Hz-3 kHz | >3 kHz | >9 kHz (overlaps band 3)
+// Each band -> soft-knee limiter -> soft clip -> added back to the signal.
+// Well below Threshold each band gets ~+10 dB (~+14 dB at the very top);
+// the lift fades as the signal gets louder. LR4 splits + all-passes keep
+// everything phase-coherent.
+
+// Sliders are hidden ("-" prefix): the knobs in @gfx replace them. They stay
+// automatable; remove the dashes to get REAPER's default sliders back.
+slider1:-45<-70,-20,0.1>-Threshold (dB)
+slider2:100<0,100,0.1>-Lows (%)
+slider3:100<0,100,0.1>-Highs (%)
+slider4:1<0.5,2,0.01>-Speed (x)
+slider5:50<0,100,0.1>-Character (%)
+slider6:100<0,100,0.1>-Mix (%)
+slider7:0<-24,12,0.1>-Output (dB)
+slider8:0<0,1,1{Off,On}>-Link Threshold to Output
+
+// GUI widgets: tk-gui-tools (keep tk_gui_tools.jsfx-inc next to this file)
+import tk_gui_tools.jsfx-inc
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+sideGain = 2.16227766; // 10^(10/20) - 1
+
+function tanh_(x) local(e) (
+  x = max(-20, min(20, x));
+  e = exp(2 * x);
+  (e - 1) / (e + 1);
+);
+
+// TPT state-variable filter, Q = 0.7071
+function svf_set(f) instance(g, k, a1, a2, a3) (
+  f = min(f, srate * 0.45);
+  g = tan($pi * f / srate);
+  k = sqrt(2);
+  a1 = 1 / (1 + g * (g + k));
+  a2 = g * a1;
+  a3 = g * a2;
+);
+function svf_tick(v0) instance(ic1, ic2, lp, bp, hp, k, a1, a2, a3) local(v1, v2, v3) (
+  v3 = v0 - ic2;
+  v1 = a1 * ic1 + a2 * v3;
+  v2 = ic2 + a2 * ic1 + a3 * v3;
+  ic1 = 2 * v1 - ic1;
+  ic2 = 2 * v2 - ic2;
+  lp = v2; bp = v1; hp = v0 - k * v1 - v2;
+  lp;
+);
+// 2nd-order all-pass matching an LR4 crossover's summed phase
+function svf_ap(v0) instance(k, bp) (
+  this.svf_tick(v0);
+  v0 - 2 * k * bp;
+);
+
+// LR4 split: lo + hi = all-pass of input
+function lr4_set(f) (
+  this.a.svf_set(f); this.l.svf_set(f); this.h.svf_set(f);
+);
+function lr4_split(x) instance(lo, hi) (
+  this.a.svf_tick(x);
+  lo = this.l.svf_tick(this.a.lp);
+  this.h.svf_tick(this.a.hp);
+  hi = this.h.hp;
+);
+
+// side chain: envelope -> soft-knee limiter -> soft clip
+function sc(s, atk, rel) instance(e) local(a, r, y) (
+  a = abs(s);
+  e += (a > e ? atk : rel) * (a - e);
+  r = e * invThr;
+  y = sideGain * s / sqrt(1 + r * r);
+  clipLevel * tanh_(y * invClip);
+);
+
+function chan_init() (
+  this.x80.lr4_set(80); this.x3k.lr4_set(3000); this.x9k.lr4_set(9000);
+  this.ap3k.svf_set(3000); this.ap9k.svf_set(9000);
+);
+
+function chan(in) local(b1, h1, b2, b3, b4, b3c, s1, s2, s3, s4, mLo, mHi, low, below) (
+  this.x80.lr4_split(in);  b1 = this.x80.lo; h1 = this.x80.hi;
+  this.x3k.lr4_split(h1);  b2 = this.x3k.lo; b3 = this.x3k.hi;
+  this.x9k.lr4_split(b3);  b4 = this.x9k.hi; b3c = this.x9k.lo + b4;
+
+  s1 = this.e1.sc(b1,  atk1, rel1);
+  s2 = this.e2.sc(b2,  atk2, rel2);
+  s3 = this.e3.sc(b3c, atk3, rel3);
+  s4 = this.e4.sc(b4,  atk4, rel4);
+
+  mLo = mixS * lowS; mHi = mixS * hiS;
+  low   = this.ap3k.svf_ap(b1 + mLo * s1);
+  below = this.ap9k.svf_ap(low + b2 + mLo * s2);
+  (below + b3c + mHi * (s3 + s4)) * outS;
+);
+
+function coef(t) ( 1 - exp(-1 / (max(t, 0.00001) * srate)) );
+
+L.chan_init();
+R.chan_init();
+mixS = slider6 * 0.01; lowS = slider2 * 0.01; hiS = slider3 * 0.01; outS = 10 ^ (slider7 / 20);
+smooth = coef(0.02);
+
+// knob changes made in @gfx don't trigger @slider, so the GUI library raises
+// flag_run_slidercode and @block picks it up
+function slidercode() (
+  thr = 10 ^ (slider1 / 20);
+  invThr = 1 / thr;
+  headroom = 4 * 0.25 ^ (slider5 * 0.01);
+  clipLevel = sideGain * thr * headroom;
+  invClip = 1 / clipLevel;
+  sp = slider4;
+  atk1 = coef(0.008  / sp); rel1 = coef(0.120 / sp);
+  atk2 = coef(0.003  / sp); rel2 = coef(0.060 / sp);
+  atk3 = coef(0.0012 / sp); rel3 = coef(0.035 / sp);
+  atk4 = coef(0.0010 / sp); rel4 = coef(0.030 / sp);
+  mixT = slider6 * 0.01; lowT = slider2 * 0.01; hiT = slider3 * 0.01; outT = 10 ^ (slider7 / 20);
+);
+
+// ---- GUI ----
+gfx_ext_retina = 1;
+
+function regfont(size) ( gfx_setfont(1, "Arial", size * TK_GUI_Scaling); );
+
+// knob cap + pointer, drawn inside the library's value ring
+function knob_cap(cx, cy, rad, t) local(S, y, hw, f, a, ca, sa, r0, r1, o) (
+  S = TK_GUI_Scaling;
+  cx = floor(cx * S); cy = floor(cy * S); rad = floor(rad * S);
+  gfx_a = 1;
+  y = -rad;
+  while (
+    hw = sqrt(rad * rad - y * y);
+    f = (y + rad) / (2 * rad);
+    rgb(58 - 28 * f, 61 - 30 * f, 66 - 32 * f);
+    gfx_line(cx - hw, cy + y, cx + hw, cy + y, 0);
+    y += 1;
+    y <= rad;
+  );
+  rgb(15, 16, 17);
+  gfx_circle(cx, cy, rad, 0, 1);
+
+  a = (-230 + 280 * t) * $pi / 180; // same sweep as the library knobs
+  ca = cos(a); sa = sin(a);
+  r0 = rad - 3 * S; r1 = r0 - 0.45 * rad;
+  rgb(216, 212, 204);
+  o = -1.5 * S;
+  while (
+    gfx_line(cx + r0 * ca - o * sa, cy + r0 * sa + o * ca, cx + r1 * ca - o * sa, cy + r1 * sa + o * ca, 1);
+    o += 0.5;
+    o <= 1.5 * S;
+  );
+);
+
+// ---- typed value entry (click the value under a knob) ----
+// edit_slider = slider being edited (0 = none), #edit = text typed so far
+function edit_parse() local(i, n, c, v, frac, neg) (
+  n = strlen(#edit); i = 0; v = 0; frac = 0; neg = 0;
+  loop(n,
+    c = str_getchar(#edit, i);
+    c == '-' ? ( neg = 1; ) :
+    (c == '.' || c == ',') ? ( frac == 0 ? frac = 1; ) :
+    frac ? ( frac *= 0.1; v += (c - '0') * frac; ) : ( v = v * 10 + (c - '0'); );
+    i += 1;
+  );
+  neg ? -v : v;
+);
+
+// keys for the value being edited: Enter = apply, Esc = cancel
+function edit_keys(slider_, min_, max_) local(c, n, guard) (
+  guard = 0;
+  while (
+    c = gfx_getchar();
+    n = strlen(#edit);
+    (c >= '0' && c <= '9') || c == '.' || c == ',' || (c == '-' && n == 0) ? (
+      n < 8 ? ( sprintf(#edit_ch, "%c", c); strcat(#edit, #edit_ch); );
+    ) : c == 8 ? (
+      n > 0 ? str_setlen(#edit, n - 1);
+    ) : c == 13 ? (
+      n > 0 && !(n == 1 && str_getchar(#edit, 0) == '-') ? (
+        slider(slider_) = max(min_, min(max_, edit_parse()));
+        slider_update(slider_);
+        flag_run_slidercode = 1;
+      );
+      edit_slider = 0;
+    ) : c == 27 ? (
+      edit_slider = 0;
+    );
+    guard += 1;
+    c > 0 && edit_slider && guard < 32;
+  );
+);
+
+// one labelled knob centred on (cx, cy); fmt_ formats the value shown below
+function aknob(cx, cy, slider_, min_, max_, default_, name_, fmt_) (
+  this.knob_config(cx - 42, cy - 42, 84, slider_, min_, max_, default_);
+  this.knob_outline(224, 160, 58);
+  this.knob_infill(30, 31, 34, 255);
+  this.knob4(1, 0.1, 0.08); // amber value ring; also handles the mouse
+  knob_cap(cx, cy, 33, (this.value - min_) / (max_ - min_));
+
+  fontsize(11); rgb(138, 134, 126);
+  strcpy(#TK_gfxlib_Label, name_);
+  this.knob_label(-1, 1.34);
+  area_mouse_detect(cx - 40, cy + 57, 80, 20, 1) ? (
+    edit_slider = slider_;
+    strcpy(#edit, "");
+    while (gfx_getchar() > 0) ( 0; ); // drop keys typed before the click
+  );
+  edit_slider == slider_ ? edit_keys(slider_, min_, max_);
+
+  regfont(12);
+  edit_slider == slider_ ? (
+    gfx_a = 1;
+    rgb(224, 160, 58); draw_rect(cx - 33, cy + 57, 66, 20, 0);
+    rgb(18, 19, 21);   draw_rect(cx - 32, cy + 58, 64, 18, 0);
+    rgb(216, 212, 204);
+    sprintf(#TK_gfxlib_Label, "%s|", #edit);
+  ) : (
+    rgb(216, 212, 204);
+    sprintf(#TK_gfxlib_Label, fmt_, slider(slider_));
+  );
+  this.knob_label(0, 1.6);
+);
+
+// lift (dB) a band's side chain is adding right now; fast attack, ~300 ms fall
+function lift_feed(e, amt) instance(dB_Val) local(ratio, v) (
+  ratio = e * invThr;
+  v = 20 * log10(1 + amt * sideGain / sqrt(1 + ratio * ratio));
+  dB_Val = v > dB_Val ? v : dB_Val + (v - dB_Val) * 0.15;
+);
+
+// slow (~0.5 s) band power, for the threshold/output link
+function pow_feed(eL, eR) instance(p) ( p += ((eL * eL + eR * eR) * 0.5 - p) * 0.07; );
+
+// estimated broadband level change (dB) the lift adds to the current material
+// at a given threshold; the clipper is ignored
+function lift_gain_db(thrDb) local(it, aLo, aHi, g1, g2, g3, g4, hi, pin, pout) (
+  it = 10 ^ (-thrDb / 20);
+  aLo = mixS * lowS * sideGain; aHi = mixS * hiS * sideGain;
+  g1 = 1 + aLo / sqrt(1 + Pow1.p * it * it);
+  g2 = 1 + aLo / sqrt(1 + Pow2.p * it * it);
+  g3 = 1 + aHi / sqrt(1 + Pow3.p * it * it);
+  g4 = aHi / sqrt(1 + Pow4.p * it * it);
+  hi = sqrt(Pow3.p) * g3 + sqrt(Pow4.p) * g4; // band 4 sits on top of band 3
+  pin = Pow1.p + Pow2.p + Pow3.p + 0.000000000001;
+  pout = Pow1.p * g1 * g1 + Pow2.p * g2 * g2 + hi * hi + 0.000000000001;
+  10 * log10(pout / pin);
+);
+
+function lift_bar(band, name_) (
+  rgb(224, 160, 58); gfx_a = 0.9;
+  this.draw_vertical_meter(55 + 32 * band, 80, 18, 244, 0, 15, 1, 0);
+  rgb(138, 134, 126); gfx_a = 1;
+  set_xy(64 + 32 * band, 333);
+  gfx_drawstr(name_, 261, gfx_x, gfx_y);
+);
+
+@slider
+slidercode();
+
+@block
+flag_run_slidercode ? (
+  flag_run_slidercode = 0;
+  slidercode();
+);
+
+@sample
+mixS += (mixT - mixS) * smooth;
+lowS += (lowT - lowS) * smooth;
+hiS  += (hiT  - hiS)  * smooth;
+outS += (outT - outS) * smooth;
+spl0 = L.chan(spl0);
+spl1 = R.chan(spl1);
+
+@gfx 660 360
+start_gfx(660, 360, 300 * max(1, gfx_ext_retina));
+
+mouse_click ? edit_slider = 0; // a click anywhere else cancels a typed entry
+
+// panel + header
+gfx_a = 1;
+rgb(30, 31, 34);   gfx_rect(0, 0, gfx_w, gfx_h);
+rgb(42, 44, 48);   gfx_rect(0, 0, gfx_w, 42 * TK_GUI_Scaling);
+rgb(224, 160, 58); gfx_rect(0, 42 * TK_GUI_Scaling, gfx_w, 2 * TK_GUI_Scaling);
+
+fontsize(22); rgb(216, 212, 204);
+set_xy(16, 21); gfx_drawstr("A-LIFT", 260, gfx_x, gfx_y);
+regfont(12); rgb(138, 134, 126);
+set_xy(110, 22); gfx_drawstr("four-band encode lift", 260, gfx_x, gfx_y);
+set_xy(16, 59);  gfx_drawstr("LIFT (dB)", 260, gfx_x, gfx_y);
+
+// lift meter
+rgb(18, 19, 21); draw_rect(16, 70, 170, 280, 0);
+rgb(58, 61, 66); gfx_a = 0.6;
+draw_vertical_scale(48, 80, 128, 244, 0, 15, 5);
+draw_rect(48, 324, 128, 1, 0);
+regfont(10); rgb(138, 134, 126); gfx_a = 1;
+gi = 0;
+loop(4,
+  set_xy(26, 324 - 244 * gi / 3);
+  gfx_drawstr(sprintf(#, "%d", gi * 5), 260, gfx_x, gfx_y);
+  gi += 1;
+);
+
+// loudest channel = least lift
+Lift1.lift_feed(max(L.e1.e, R.e1.e), mixS * lowS);
+Lift2.lift_feed(max(L.e2.e, R.e2.e), mixS * lowS);
+Lift3.lift_feed(max(L.e3.e, R.e3.e), mixS * hiS);
+Lift4.lift_feed(max(L.e4.e, R.e4.e), mixS * hiS);
+Lift1.lift_bar(0, "<80");
+Lift2.lift_bar(1, "80-3k");
+Lift3.lift_bar(2, ">3k");
+Lift4.lift_bar(3, ">9k");
+
+// knobs: drag (shift = fine), mouse wheel, double-click = default
+Pow1.pow_feed(L.e1.e, R.e1.e);
+Pow2.pow_feed(L.e2.e, R.e2.e);
+Pow3.pow_feed(L.e3.e, R.e3.e);
+Pow4.pow_feed(L.e4.e, R.e4.e);
+thrWas = slider1;
+kThr.aknob(257, 118, 1, -70, -20, -45, "THRESHOLD", "%.1f dB");
+// link: a threshold move on the knob trims Output by the level change it causes
+slider8 && slider1 != thrWas ? (
+  slider7 = max(-24, min(12, slider7 + lift_gain_db(thrWas) - lift_gain_db(slider1)));
+  slider_update(7);
+);
+kLows.aknob(367, 118, 2, 0, 100, 100, "LOWS", "%.0f %%");
+kHighs.aknob(477, 118, 3, 0, 100, 100, "HIGHS", "%.0f %%");
+kSpeed.aknob(587, 118, 4, 0.5, 2, 1, "SPEED", "%.2fx");
+kChar.aknob(312, 274, 5, 0, 100, 50, "CHARACTER", "%.0f %%");
+kMix.aknob(422, 274, 6, 0, 100, 100, "MIX", "%.0f %%");
+kOut.aknob(532, 274, 7, -24, 12, 0, "OUTPUT", "%.1f dB");
+
+kLink.button_config(584, 263, 58, 22, 8, 1, 1);
+kLink.button_outline(1, 224, 160, 58, 58, 61, 66);
+kLink.button_infill(58, 42, 16, 42, 44, 48);
+kLink.button();
+fontsize(10);
+slider8 ? rgb(224, 160, 58) : rgb(138, 134, 126);
+strcpy(#TK_gfxlib_Label, "LINK THR");
+kLink.button_label(5, 0, 0);
