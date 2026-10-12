@@ -1,11 +1,10 @@
-# A-Lift (JSFX)
+# ReaperFX
 
-A four-band "encode-only" lift effect for REAPER, in the spirit of the old
-studio trick of running a vocal or acoustic source through an A-type
-noise-reduction encoder without decoding it.
+JSFX effects for REAPER by sguyader, installable with ReaPack.
 
-It is a behavioural model of the effect, not a circuit emulation of any specific
-unit, and it is not affiliated with Dolby Laboratories.
+| Effect | Category | What it is |
+|---|---|---|
+| [A-Lift](#a-lift) | Dynamics | Four-band "encode-only" lift: brings up low-level detail and air |
 
 ## Install with ReaPack
 
@@ -15,15 +14,25 @@ In REAPER: Extensions → ReaPack → Import repositories, and paste
 https://github.com/sguyader/ReaperFX/raw/main/index.xml
 ```
 
-Then Extensions → ReaPack → Browse packages, and install **A-Lift**.
+Then Extensions → ReaPack → Browse packages, and install the effects you want.
 
 ## Manual install
 
-Copy both files from `Dynamics/` (`A-Lift.jsfx` and `tk_gui_tools.jsfx-inc`)
-into the same folder inside your REAPER `Effects` folder (Options → Show REAPER
-resource path), then rescan.
+Each effect lives in its category folder (for example `Dynamics/`). Copy the
+`.jsfx` file and any `.jsfx-inc` file listed for it into the same folder inside
+your REAPER `Effects` folder (Options → Show REAPER resource path), then rescan.
 
-## How it works
+## A-Lift
+
+Files: `Dynamics/A-Lift.jsfx`, `Dynamics/tk_gui_tools.jsfx-inc`
+
+A four-band "encode-only" lift, in the spirit of the old studio trick of
+running a vocal or acoustic source through an A-type noise-reduction encoder
+without decoding it. It is a behavioural model of the effect, not a circuit
+emulation of any specific unit, and it is not affiliated with Dolby
+Laboratories.
+
+### How it works
 
 The input is split into four bands with phase-coherent Linkwitz-Riley
 crossovers: below 80 Hz, 80 Hz – 3 kHz, above 3 kHz, and above 9 kHz (which
@@ -35,7 +44,7 @@ about +10 dB in-band (about +14 dB at the very top). As the signal rises above
 Threshold the lift fades away, so low-level detail, breaths, room tone and the
 top end come up while peaks barely change.
 
-## Controls
+### Controls
 
 | Control | What it does |
 |---|---|
@@ -56,9 +65,9 @@ The window is resizable and the GUI scales with it.
 
 ## Credits
 
-The GUI is drawn with the tk-gui-tools JSFX library
-(`Dynamics/tk_gui_tools.jsfx-inc`), which is free to use and share with free
-JSFX plugins; see the notice at the top of that file.
+GUIs are drawn with the tk-gui-tools JSFX library (`tk_gui_tools.jsfx-inc`),
+which is free to use and share with free JSFX plugins; see the notice at the
+top of that file.
 
 ## License
 
