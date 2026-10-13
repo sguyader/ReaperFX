@@ -1,8 +1,7 @@
 desc: A-Lift (four-band encode lift)
 author: sguyader
-version: 1.0.0
-changelog: Initial release
-provides: tk_gui_tools.jsfx-inc
+version: 1.0.1
+changelog: tk_gui_tools.jsfx-inc is no longer installed with the plugin; get it from https://stash.reaper.fm/v/53055/tk-gui-tools.zip (see About)
 about:
   # A-Lift
   Four-band "encode-only" lift, in the spirit of running a source through an
@@ -14,8 +13,9 @@ about:
   wheel, double-click to reset; click a value to type it. LINK THR trims
   Output while you turn Threshold so the level stays roughly constant.
 
-  GUI widgets: tk-gui-tools library (tk_gui_tools.jsfx-inc), installed
-  alongside the plugin.
+  Requires the tk-gui-tools library, which is not installed with the plugin.
+  Download https://stash.reaper.fm/v/53055/tk-gui-tools.zip and copy
+  tk_gui_tools.jsfx-inc from it anywhere inside your REAPER Effects folder.
 //tags: dynamics enhancer exciter
 //
 // Four-band "encode-only" lift, in the spirit of running a source through an
@@ -39,7 +39,8 @@ slider6:100<0,100,0.1>-Mix (%)
 slider7:0<-24,12,0.1>-Output (dB)
 slider8:0<0,1,1{Off,On}>-Link Threshold to Output
 
-// GUI widgets: tk-gui-tools (keep tk_gui_tools.jsfx-inc next to this file)
+// GUI widgets: tk-gui-tools. tk_gui_tools.jsfx-inc is not shipped with this
+// plugin; it has to be somewhere inside the REAPER Effects folder (see About).
 import tk_gui_tools.jsfx-inc
 
 in_pin:left input
