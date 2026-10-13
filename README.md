@@ -47,6 +47,8 @@ the effect and add it again.
 
 File: `Dynamics/A-Lift.jsfx`
 
+![A-Lift](Dynamics/A-Lift.png)
+
 A four-band "encode-only" lift, in the spirit of the old studio trick of
 running a vocal or acoustic source through an A-type noise-reduction encoder
 without decoding it. It is a behavioural model of the effect, not a circuit
@@ -87,6 +89,8 @@ The window is resizable and the GUI scales with it.
 ## P-Clip
 
 File: `Dynamics/P-Clip.jsfx`
+
+![P-Clip](Dynamics/P-Clip.png)
 
 A soft clipper modelled on the Soft Clip Pro mode of SIR Audio Tools'
 StandardCLIP, with its input gain, clip level and Soft-Clip Saturator slider.
