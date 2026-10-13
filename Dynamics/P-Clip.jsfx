@@ -1,0 +1,398 @@
+desc: P-Clip (parabolic-knee clipper)
+author: Le Seuil Studio
+version: 1.0.0
+changelog: Initial release
+about:
+  # P-Clip
+  Soft clipper modelled on the Soft Clip Pro mode of SIR Audio Tools'
+  StandardCLIP. Saturation goes from a plain hard clip (0 %) to a soft knee
+  that squeezes the last 24 dB below the clip level into 12 dB and adds 12 dB
+  of gain (100 %). Clip Level sets where the clip sits, from 0 down to
+  -24 dBFS, and Input Gain drives the signal into it.
+
+  Only the input gain, the clip level and that clip curve are modelled: no
+  output gain, ceiling or oversampling. Not affiliated with SIR Audio Tools.
+
+  Custom GUI with the transfer curve, a dot showing where the input sits on
+  it, and a gain-reduction meter with peak hold and a resettable maximum
+  (click the meter). Knobs: drag (Shift = fine), mouse wheel,
+  double-click to reset; click a value to type it.
+
+  Requires the tk-gui-tools library, which is not installed with the plugin.
+  Download https://stash.reaper.fm/v/53055/tk-gui-tools.zip and copy
+  tk_gui_tools.jsfx-inc from it anywhere inside your REAPER Effects folder.
+//tags: dynamics saturation limiter
+
+// Sliders are hidden ("-" prefix): the knobs in @gfx replace them. They stay
+// automatable; remove the dashes to get REAPER's default sliders back.
+slider1:0<0,100,0.1>-Saturation (%)
+slider2:0<-24,0,0.1>-Clip Level (dB)
+slider3:0<-12,24,0.1>-Input Gain (dB)
+
+// GUI widgets: tk-gui-tools. tk_gui_tools.jsfx-inc is not shipped with this
+// plugin; it has to be somewhere inside the REAPER Effects folder (see About).
+import tk_gui_tools.jsfx-inc
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+// Soft Clip Pro curve, after the StandardCLIP manual:
+//   25 % - compresses the last  6 dB into  3 dB, and adds  3 dB
+//   50 % - compresses the last 12 dB into  6 dB, and adds  6 dB
+//   75 % - compresses the last 18 dB into  9 dB, and adds  9 dB
+//  100 % - compresses the last 24 dB into 12 dB, and adds 12 dB
+//
+// With K = 12 dB * saturation and levels in dB relative to the clip level
+// (the Clip Level slider), after the input gain:
+//   in <= -2K      : out = in + K            (untouched apart from the gain)
+//   -2K < in < 0   : out = -in^2 / (4K)      (soft knee)
+//   in >= 0        : out = 0                 (hard clip)
+// The knee is the usual quadratic soft knee of a limiter, 2K wide and centred
+// on the clip level once the gain is applied; it traces the function plots in
+// the manual to within their line width. At 0 % it shrinks to a hard clip.
+
+// knob changes made in @gfx don't trigger @slider, so the GUI library raises
+// flag_run_slidercode and @block picks it up
+function slidercode() (
+  knee_db = slider1 * 0.12;             // K
+  gain_lin = 10 ^ (knee_db / 20);
+  knee_lin = 10 ^ (-knee_db / 10);      // |s| where the knee starts (-2K dB)
+  // out = exp(-ln(|s|)^2 * knee_k) is the knee formula above, in linear terms
+  knee_k = knee_db > 0 ? 5 / (knee_db * log(10)) : 0;
+  clip_lin = 10 ^ (slider2 / 20);
+  drive = 10 ^ ((slider3 - slider2) / 20); // input gain, then level relative to the clip level
+);
+
+function process_sample(s) local(a, l) (
+  a = abs(s) * drive;
+  a >= 1 ? (
+    a = 1;
+  ) : a > knee_lin ? (
+    l = log(a);
+    a = exp(-l * l * knee_k);
+  ) : (
+    a *= gain_lin;
+  );
+  a *= clip_lin;
+  s < 0 ? -a : a;
+);
+
+// ---- GUI ----
+gfx_ext_retina = 1;
+// keep the variables (the all-time maximum GR) across stop/start: without this
+// REAPER clears them and runs @init again each time playback starts
+ext_noinit = 1;
+
+// transfer plot: -24..+6 dBFS on both axes
+plotX = 52; plotY = 82; plotSize = 200;
+In.dB_Val = -100;
+
+function regfont(size) ( gfx_setfont(1, "Arial", size * TK_GUI_Scaling); );
+
+function plot_x(db) ( (plotX + (db + 24) * plotSize / 30) * TK_GUI_Scaling; );
+function plot_y(db) ( (plotY + (6 - db) * plotSize / 30) * TK_GUI_Scaling; );
+function plot_db(x) ( (x / TK_GUI_Scaling - plotX) * 30 / plotSize - 24; ); // inverse of plot_x
+
+// process_sample()'s curve in dBFS, from the view* values @gfx derives from
+// the sliders. Kept apart from process_sample(): @gfx and @sample run on
+// different threads and function locals are shared between calls.
+function curve_db(in) (
+  in -= viewClip;
+  viewClip + (in >= 0 ? 0 : in > -2 * viewKnee ? -in * in / (4 * viewKnee) : in + viewKnee);
+);
+
+// names a stretch of the input axis at the top of the plot, when it is wide
+// enough and the curve is out of the way
+function zone_label(name_, inA, inB) local(w, h) (
+  gfx_measurestr(name_, w, h);
+  plot_x(inB) - plot_x(inA) > w + 8 * TK_GUI_Scaling
+    && plot_y(curve_db((inA + inB) * 0.5)) > (plotY + 30) * TK_GUI_Scaling ? (
+    gfx_x = (plot_x(inA) + plot_x(inB)) * 0.5;
+    gfx_y = (plotY + 11) * TK_GUI_Scaling;
+    gfx_drawstr(name_, 261, gfx_x, gfx_y);
+  );
+);
+
+// meters run at GUI rate: instant attack, linear fall (dB per frame)
+function level_feed(v, fall) instance(dB_Val) ( dB_Val = max(v, dB_Val - fall); );
+function gr_feed(v, fall) instance(dB_Val) ( dB_Val = min(v, dB_Val + fall); );
+// recent maximum reduction: held for 1.5 s, then falls back to the bar
+function gr_hold(v, dt) instance(dB_Val_Min, held) (
+  v <= dB_Val_Min ? (
+    dB_Val_Min = v; held = 0;
+  ) : (
+    held += dt;
+    held > 1.5 ? dB_Val_Min = min(v, dB_Val_Min + 20 * dt);
+  );
+);
+
+// the curve, w pixels wide, one pixel column at a time with hand-made
+// antialiasing: gfx_line snaps to whole pixels, which makes a slow bend wobble
+function draw_curve(w) local(x, x1, y, yn, h, top, bot) (
+  x = floor(plot_x(-24)); x1 = floor(plot_x(6));
+  y = plot_y(curve_db(plot_db(x + 0.5)));
+  while (
+    yn = plot_y(curve_db(plot_db(x + 1.5)));
+    h = w * sqrt(1 + (yn - y) * (yn - y)) * 0.5; // half height of the stroke at this slope
+    top = y - h; bot = y + h;
+    gfx_a = 1;               gfx_rect(x, ceil(top), 1, floor(bot) - ceil(top));
+    gfx_a = ceil(top) - top; gfx_rect(x, ceil(top) - 1, 1, 1);
+    gfx_a = bot - floor(bot); gfx_rect(x, floor(bot), 1, 1);
+    y = yn;
+    x += 1;
+    x < x1;
+  );
+  gfx_a = 1;
+);
+
+// knob cap + pointer, drawn inside the library's value ring
+function knob_cap(cx, cy, rad, t) local(S, y, hw, f, a, ca, sa, r0, r1, o) (
+  S = TK_GUI_Scaling;
+  cx = floor(cx * S); cy = floor(cy * S); rad = floor(rad * S);
+  gfx_a = 1;
+  y = -rad;
+  while (
+    hw = sqrt(rad * rad - y * y);
+    f = (y + rad) / (2 * rad);
+    rgb(58 - 28 * f, 61 - 30 * f, 66 - 32 * f);
+    gfx_line(cx - hw, cy + y, cx + hw, cy + y, 0);
+    y += 1;
+    y <= rad;
+  );
+  rgb(15, 16, 17);
+  gfx_circle(cx, cy, rad, 0, 1);
+
+  a = (-230 + 280 * t) * $pi / 180; // same sweep as the library knobs
+  ca = cos(a); sa = sin(a);
+  r0 = rad - 3 * S; r1 = r0 - 0.45 * rad;
+  rgb(216, 212, 204);
+  o = -1.5 * S;
+  while (
+    gfx_line(cx + r0 * ca - o * sa, cy + r0 * sa + o * ca, cx + r1 * ca - o * sa, cy + r1 * sa + o * ca, 1);
+    o += 0.5;
+    o <= 1.5 * S;
+  );
+);
+
+// ---- typed value entry (click the value under the knob) ----
+// edit_slider = slider being edited (0 = none), #edit = text typed so far
+function edit_parse() local(i, n, c, v, frac, neg) (
+  n = strlen(#edit); i = 0; v = 0; frac = 0; neg = 0;
+  loop(n,
+    c = str_getchar(#edit, i);
+    c == '-' ? ( neg = 1; ) :
+    (c == '.' || c == ',') ? ( frac == 0 ? frac = 1; ) :
+    frac ? ( frac *= 0.1; v += (c - '0') * frac; ) : ( v = v * 10 + (c - '0'); );
+    i += 1;
+  );
+  neg ? -v : v;
+);
+
+// keys for the value being edited: Enter = apply, Esc = cancel
+function edit_keys(slider_, min_, max_) local(c, n, guard) (
+  guard = 0;
+  while (
+    c = gfx_getchar();
+    n = strlen(#edit);
+    (c >= '0' && c <= '9') || c == '.' || c == ',' || (c == '-' && n == 0) ? (
+      n < 8 ? ( sprintf(#edit_ch, "%c", c); strcat(#edit, #edit_ch); );
+    ) : c == 8 ? (
+      n > 0 ? str_setlen(#edit, n - 1);
+    ) : c == 13 ? (
+      n > 0 && !(n == 1 && str_getchar(#edit, 0) == '-') ? (
+        slider(slider_) = max(min_, min(max_, edit_parse()));
+        slider_update(slider_);
+        flag_run_slidercode = 1;
+      );
+      edit_slider = 0;
+    ) : c == 27 ? (
+      edit_slider = 0;
+    );
+    guard += 1;
+    c > 0 && edit_slider && guard < 32;
+  );
+);
+
+// one labelled knob centred on (cx, cy); fmt_ formats the value shown below
+function aknob(cx, cy, slider_, min_, max_, default_, name_, fmt_) (
+  this.knob_config(cx - 42, cy - 42, 84, slider_, min_, max_, default_);
+  this.knob_outline(224, 160, 58);
+  this.knob_infill(30, 31, 34, 255);
+  this.knob4(1, 0.1, 0.08); // amber value ring; also handles the mouse
+  knob_cap(cx, cy, 33, (this.value - min_) / (max_ - min_));
+
+  fontsize(11); rgb(138, 134, 126);
+  strcpy(#TK_gfxlib_Label, name_);
+  this.knob_label(-1, 1.34);
+  area_mouse_detect(cx - 40, cy + 57, 80, 20, 1) ? (
+    edit_slider = slider_;
+    strcpy(#edit, "");
+    while (gfx_getchar() > 0) ( 0; ); // drop keys typed before the click
+  );
+  edit_slider == slider_ ? edit_keys(slider_, min_, max_);
+
+  regfont(12);
+  edit_slider == slider_ ? (
+    gfx_a = 1;
+    rgb(224, 160, 58); draw_rect(cx - 33, cy + 57, 66, 20, 0);
+    rgb(18, 19, 21);   draw_rect(cx - 32, cy + 58, 64, 18, 0);
+    rgb(216, 212, 204);
+    sprintf(#TK_gfxlib_Label, "%s|", #edit);
+  ) : (
+    rgb(216, 212, 204);
+    sprintf(#TK_gfxlib_Label, fmt_, slider(slider_));
+  );
+  this.knob_label(0, 1.6);
+);
+
+// read-only figure under the knobs
+function stat(cx, name_, fmt_, v) (
+  fontsize(10); rgb(138, 134, 126);
+  set_xy(cx, 279); gfx_drawstr(name_, 261, gfx_x, gfx_y);
+  regfont(12); rgb(216, 212, 204);
+  set_xy(cx, 296); gfx_drawstr(sprintf(#, fmt_, v), 261, gfx_x, gfx_y);
+);
+
+@slider
+slidercode();
+
+@block
+flag_run_slidercode ? (
+  flag_run_slidercode = 0;
+  slidercode();
+);
+
+@sample
+inPeak = max(inPeak, max(abs(spl0), abs(spl1))); // for the GUI
+
+spl0 = process_sample(spl0);
+spl1 = process_sample(spl1);
+
+@gfx 680 324
+start_gfx(680, 324, 300 * max(1, gfx_ext_retina));
+
+mouse_click ? edit_slider = 0; // a click anywhere else cancels a typed entry
+
+// panel + header
+gfx_a = 1;
+rgb(30, 31, 34);   gfx_rect(0, 0, gfx_w, gfx_h);
+rgb(42, 44, 48);   gfx_rect(0, 0, gfx_w, 42 * TK_GUI_Scaling);
+rgb(224, 160, 58); gfx_rect(0, 42 * TK_GUI_Scaling, gfx_w, 2 * TK_GUI_Scaling);
+
+fontsize(22); rgb(216, 212, 204);
+gfx_measurestr("P-CLIP", titleW, titleH);
+set_xy(16, 21); gfx_drawstr("P-CLIP", 260, gfx_x, gfx_y);
+regfont(12); rgb(138, 134, 126);
+set_xy(30, 22); gfx_x += titleW; gfx_drawstr("parabolic-knee clipper", 260, gfx_x, gfx_y);
+set_xy(16, 59);  gfx_drawstr("TRANSFER (dB)", 260, gfx_x, gfx_y);
+set_xy(278, 59); gfx_drawstr("GR (dB)", 260, gfx_x, gfx_y);
+
+// knobs, in signal order: drag (shift = fine), mouse wheel, double-click = default
+kIn.aknob(402, 154, 3, -12, 24, 0, "INPUT GAIN", "%.1f dB");
+kClip.aknob(506, 154, 2, -24, 0, 0, "CLIP LEVEL", "%.1f dB");
+kSat.aknob(610, 154, 1, 0, 100, 0, "SATURATION", "%.1f %%");
+
+// the curve as the sliders show it, also while audio isn't running
+viewKnee = slider1 * 0.12;         // K: gain below the knee, in dB
+viewClip = slider2;                // clip level, dBFS
+kneeIn = viewClip - 2 * viewKnee;  // input level where the knee starts
+viewThr = viewClip - viewKnee;     // output level where the knee starts
+
+rgb(58, 61, 66); gfx_a = 0.6;
+draw_rect(356, 265, 300, 1, 0);
+gfx_a = 1;
+stat(402, "KNEE", "%.1f dB", 2 * viewKnee);
+stat(506, "SAT GAIN", "+%.1f dB", viewKnee);
+stat(610, "THRESHOLD", "%.1f dB", viewThr < 0 ? viewThr : 0);
+
+// meters, from the input peak caught since the last frame; the plot's input
+// axis is the level after the input gain
+gfxNow = time_precise();
+gfxDt = max(0, min(0.1, gfxNow - gfxLast));
+gfxLast = gfxNow;
+inDb = inPeak > 0.00001 ? 20 * log10(inPeak) + slider3 : -100;
+inPeak = 0;
+In.level_feed(inDb, 40 * gfxDt);
+grNow = curve_db(inDb) - inDb - viewKnee;
+Gr.gr_feed(grNow, 20 * gfxDt);
+// a click on the GR meter clears both maximums
+area_mouse_detect(278, 70, 58, 238, 1) ? ( grMax = 0; Gr.dB_Val_Min = 0; );
+Gr.gr_hold(grNow, gfxDt);
+grMax = min(grMax, grNow); // largest reduction since the last click
+
+// transfer plot; a low clip level can push the knee off its left edge
+zoneA = max(-24, kneeIn);
+zoneB = max(-24, viewClip);
+rgb(18, 19, 21); draw_rect(16, 70, 250, 238, 0);
+rgb(224, 160, 58);
+gfx_a = 0.06; gfx_rect(plot_x(zoneA), plot_y(6), plot_x(zoneB) - plot_x(zoneA), plot_y(-24) - plot_y(6));
+gfx_a = 0.13; gfx_rect(plot_x(zoneB), plot_y(6), plot_x(6) - plot_x(zoneB), plot_y(-24) - plot_y(6));
+
+rgb(58, 61, 66); gfx_a = 0.6;
+gi = 0;
+loop(6,
+  draw_rect(plotX + plotSize * gi / 5, plotY, 1, plotSize, 0);
+  draw_rect(plotX, plotY + plotSize * gi / 5, plotSize + 1, 1, 0);
+  gi += 1;
+);
+gfx_line(plot_x(-24), plot_y(-24), plot_x(6), plot_y(6), 1); // unity
+
+regfont(10); rgb(138, 134, 126); gfx_a = 1;
+gi = 0;
+loop(5,
+  sprintf(#tick, "%d", gi * 6 - 24);
+  set_xy(plotX - 6, plotY + plotSize * (5 - gi) / 5);
+  gfx_drawstr(#tick, 262, gfx_x, gfx_y);
+  set_xy(plotX + plotSize * gi / 5, plotY + plotSize + 12);
+  gfx_drawstr(#tick, 261, gfx_x, gfx_y);
+  gi += 1;
+);
+// axis names, where the +6 ticks would be
+gfx_a = 0.7;
+set_xy(plotX - 6, plotY + 3); gfx_drawstr("OUT", 262, gfx_x, gfx_y);
+set_xy(plotX + plotSize, plotY + plotSize + 12); gfx_drawstr("IN", 261, gfx_x, gfx_y);
+zone_label("SOFT", zoneA, zoneB);
+zone_label("CLIP", zoneB, 6);
+
+// level where the saturation begins, as on StandardCLIP's function plot
+rgb(224, 160, 58);
+viewKnee > 0 && viewThr > -24 ? (
+  gfx_a = 0.45;
+  draw_rect(plotX, plotY + (6 - viewThr) * plotSize / 30, plotSize + 1, 1, 0);
+);
+draw_curve(2.6 * TK_GUI_Scaling);
+
+// where the input is on the curve right now
+In.dB_Val > -24 ? (
+  dotIn = min(6, In.dB_Val);
+  rgb(216, 212, 204); gfx_a = 0.35;
+  gfx_line(plot_x(dotIn), plot_y(curve_db(dotIn)), plot_x(dotIn), plot_y(-24), 1);
+  gfx_a = 1;
+  gfx_circle(plot_x(dotIn), plot_y(curve_db(dotIn)), 3.5 * TK_GUI_Scaling, 1, 1);
+);
+
+// gain reduction meter: what the knee and the clip take off after the gain
+rgb(18, 19, 21); gfx_a = 1; draw_rect(278, 70, 58, 238, 0);
+rgb(58, 61, 66); gfx_a = 0.6;
+draw_vertical_scale(304, plotY, 24, plotSize, -12, 0, 3);
+draw_rect(304, plotY + plotSize, 24, 1, 0);
+regfont(10); rgb(138, 134, 126); gfx_a = 1;
+gi = 0;
+loop(5,
+  set_xy(298, plotY + plotSize * gi / 4);
+  gfx_drawstr(sprintf(#, "%d", gi * 3), 262, gfx_x, gfx_y);
+  gi += 1;
+);
+rgb(224, 160, 58); gfx_a = 0.9;
+Gr.draw_vertical_GR_meter(308, plotY, 16, plotSize, -12, 0, 1, 0);
+rgb(216, 212, 204); gfx_a = 1;
+Gr.draw_vertical_GR_meter(308, plotY, 16, plotSize, -12, 0, 0, 2); // recent maximum
+
+// largest reduction since the last click, also beyond the meter's range
+rgb(58, 61, 66);   draw_rect(284, 290, 46, 15, 0);
+rgb(24, 25, 28);   draw_rect(285, 291, 44, 13, 0);
+rgb(216, 212, 204);
+set_xy(307, 298); gfx_drawstr(sprintf(#, "%.1f", grMax < 0 ? -grMax : 0), 261, gfx_x, gfx_y);
