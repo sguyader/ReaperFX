@@ -7,8 +7,8 @@ provides: tk_gui_tools.jsfx-inc
 about:
   # tk-gui-tools
   The JSFX library that draws the GUIs of the effects in this repository
-  (A-Lift, P-Clip). Install it once, next to the effects; it is shared by all
-  of them.
+  (A-Lift, P-Clip). Install it once; it is shared by all of them, whatever
+  category they are in.
 
   This package installs only tk_gui_tools.jsfx-inc. The library is written by
   John Matthews (Tukan Studios) and is redistributed here with his permission;

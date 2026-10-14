@@ -25,18 +25,19 @@ together with the `tk-gui-tools` package, the
 ## Manual install
 
 Each effect lives in its category folder (for example `Dynamics/`). Copy the
-`.jsfx` file and `Dynamics/tk_gui_tools.jsfx-inc`, the
-[GUI library](#gui-library-required), into the same folder inside your REAPER
-`Effects` folder (Options → Show REAPER resource path), then rescan.
+`.jsfx` file and `Library/tk_gui_tools.jsfx-inc`, the
+[GUI library](#gui-library-required), anywhere inside your REAPER `Effects`
+folder (Options → Show REAPER resource path), then rescan.
 
 ## GUI library (required)
 
 The GUIs are drawn with the tk-gui-tools JSFX library, a single file:
-`Dynamics/tk_gui_tools.jsfx-inc`. It is written by John Matthews (Tukan
+`Library/tk_gui_tools.jsfx-inc`. It is written by John Matthews (Tukan
 Studios) and redistributed here with his permission.
 
-With ReaPack it is a package of its own, `tk-gui-tools`, in the Dynamics
-category. Install it once; all the effects share it. ReaPack has no
+With ReaPack it is a package of its own, `tk-gui-tools`, in the Library
+category. Install it once; all the effects share it, whatever category they
+are in. ReaPack has no
 dependencies between packages, so installing an effect does not install the
 library for you.
 
@@ -44,7 +45,7 @@ Without that file an effect shows `import: can't find file
 'tk_gui_tools.jsfx-inc'` instead of its GUI. Once the file is in place, remove
 the effect and add it again.
 
-`Dynamics/tk-gui-tools.jsfx` only carries the ReaPack package information. It
+`Library/tk-gui-tools.jsfx` only carries the ReaPack package information. It
 is not an effect, and a manual install does not need it.
 
 The full library archive, with examples and documentation, is on the REAPER
@@ -159,5 +160,5 @@ file.
 
 ## License
 
-MIT (see `LICENSE`), except `Dynamics/tk_gui_tools.jsfx-inc`: the tk-gui-tools
+MIT (see `LICENSE`), except `Library/tk_gui_tools.jsfx-inc`: the tk-gui-tools
 library is not covered by that license and keeps its own terms.
