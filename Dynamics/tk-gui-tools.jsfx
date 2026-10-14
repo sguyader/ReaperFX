@@ -1,0 +1,21 @@
+desc: tk-gui-tools (GUI library, not an effect)
+author: John Matthews (Tukan Studios)
+version: 1.0.0
+changelog: Initial package: tk_gui_tools.jsfx-inc as in https://stash.reaper.fm/v/53055/tk-gui-tools.zip
+metapackage: true
+provides: tk_gui_tools.jsfx-inc
+about:
+  # tk-gui-tools
+  The JSFX library that draws the GUIs of the effects in this repository
+  (A-Lift, P-Clip). Install it once, next to the effects; it is shared by all
+  of them.
+
+  This package installs only tk_gui_tools.jsfx-inc. The library is written by
+  John Matthews (Tukan Studios) and is redistributed here with his permission;
+  its terms are at the top of that file. The full archive, with
+  examples and documentation, is at
+  https://stash.reaper.fm/v/53055/tk-gui-tools.zip
+
+// This file only carries the ReaPack package information for
+// tk_gui_tools.jsfx-inc. ReaPack does not install it, and it does nothing as
+// an effect.

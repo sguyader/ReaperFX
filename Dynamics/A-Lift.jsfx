@@ -13,9 +13,8 @@ about:
   wheel, double-click to reset; click a value to type it. LINK THR trims
   Output while you turn Threshold so the level stays roughly constant.
 
-  Requires the tk-gui-tools library, which is not installed with the plugin.
-  Download https://stash.reaper.fm/v/53055/tk-gui-tools.zip and copy
-  tk_gui_tools.jsfx-inc from it anywhere inside your REAPER Effects folder.
+  Requires the tk-gui-tools library (tk_gui_tools.jsfx-inc). With ReaPack,
+  install the "tk-gui-tools" package from this repository as well.
 //tags: dynamics enhancer exciter
 //
 // Four-band "encode-only" lift, in the spirit of running a source through an
@@ -39,8 +38,8 @@ slider6:100<0,100,0.1>-Mix (%)
 slider7:0<-24,12,0.1>-Output (dB)
 slider8:0<0,1,1{Off,On}>-Link Threshold to Output
 
-// GUI widgets: tk-gui-tools. tk_gui_tools.jsfx-inc is not shipped with this
-// plugin; it has to be somewhere inside the REAPER Effects folder (see About).
+// GUI widgets: tk-gui-tools. tk_gui_tools.jsfx-inc comes from the
+// "tk-gui-tools" ReaPack package of this repository (see About).
 import tk_gui_tools.jsfx-inc
 
 in_pin:left input

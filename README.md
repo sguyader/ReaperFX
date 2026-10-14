@@ -7,7 +7,7 @@ JSFX effects for REAPER by sguyader, installable with ReaPack.
 | [A-Lift](#a-lift) | Dynamics | Four-band "encode-only" lift: brings up low-level detail and air |
 | [P-Clip](#p-clip) | Dynamics | Soft clipper modelled on StandardCLIP's Soft Clip Pro mode |
 
-The effects need the tk-gui-tools library, which you install yourself: see
+The effects need the tk-gui-tools library, which is in this repository too: see
 [GUI library](#gui-library-required).
 
 ## Install with ReaPack
@@ -18,30 +18,37 @@ In REAPER: Extensions → ReaPack → Import repositories, and paste
 https://github.com/sguyader/ReaperFX/raw/main/index.xml
 ```
 
-Then Extensions → ReaPack → Browse packages, and install the effects you want.
-ReaPack does not install the [GUI library](#gui-library-required); add it
-yourself.
+Then Extensions → ReaPack → Browse packages, and install the effects you want
+together with the `tk-gui-tools` package, the
+[GUI library](#gui-library-required) they all share.
 
 ## Manual install
 
 Each effect lives in its category folder (for example `Dynamics/`). Copy the
-`.jsfx` file into your REAPER `Effects` folder (Options → Show REAPER resource
-path), add the [GUI library](#gui-library-required), then rescan.
+`.jsfx` file and `Dynamics/tk_gui_tools.jsfx-inc`, the
+[GUI library](#gui-library-required), into the same folder inside your REAPER
+`Effects` folder (Options → Show REAPER resource path), then rescan.
 
 ## GUI library (required)
 
-The GUIs are drawn with the tk-gui-tools JSFX library. It is not distributed
-here; download it from the REAPER stash:
+The GUIs are drawn with the tk-gui-tools JSFX library, a single file:
+`Dynamics/tk_gui_tools.jsfx-inc`. It is written by John Matthews (Tukan
+Studios) and redistributed here with his permission.
 
-https://stash.reaper.fm/v/53055/tk-gui-tools.zip
-
-Unzip it and copy `tk_gui_tools.jsfx-inc` anywhere inside your REAPER `Effects`
-folder (Options → Show REAPER resource path). The rest of the zip (examples,
-images, documentation) is not needed.
+With ReaPack it is a package of its own, `tk-gui-tools`, in the Dynamics
+category. Install it once; all the effects share it. ReaPack has no
+dependencies between packages, so installing an effect does not install the
+library for you.
 
 Without that file an effect shows `import: can't find file
 'tk_gui_tools.jsfx-inc'` instead of its GUI. Once the file is in place, remove
 the effect and add it again.
+
+`Dynamics/tk-gui-tools.jsfx` only carries the ReaPack package information. It
+is not an effect, and a manual install does not need it.
+
+The full library archive, with examples and documentation, is on the REAPER
+stash: https://stash.reaper.fm/v/53055/tk-gui-tools.zip
 
 ## A-Lift
 
@@ -145,11 +152,12 @@ The window is resizable and the GUI scales with it.
 
 ## Credits
 
-GUIs are drawn with the tk-gui-tools JSFX library (`tk_gui_tools.jsfx-inc`),
-which is free to use with free JSFX plugins; see the notice at the top of that
+GUIs are drawn with the tk-gui-tools JSFX library (`tk_gui_tools.jsfx-inc`) by
+John Matthews (Tukan Studios), which is free to use with free JSFX plugins and
+is redistributed here with his permission; see the notice at the top of that
 file.
 
 ## License
 
-MIT (see `LICENSE`). The tk-gui-tools library is not part of this repository
-and has its own terms.
+MIT (see `LICENSE`), except `Dynamics/tk_gui_tools.jsfx-inc`: the tk-gui-tools
+library is not covered by that license and keeps its own terms.
