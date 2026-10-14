@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="ReaperFX" commit="4cdca08a7b47010c9a799a19563cf6c895e07138">
+<index version="1" name="ReaperFX" commit="e558298ffbc478f5a85c9346cb29b401509236c3">
   <category name="Dynamics">
     <reapack name="A-Lift.jsfx" type="effect" desc="A-Lift (four-band encode lift)">
       <metadata>
@@ -43,6 +43,8 @@
         <source>https://github.com/sguyader/ReaperFX/raw/572ae0ee011630db52b19868336af6b3d9334477/Dynamics/P-Clip.jsfx</source>
       </version>
     </reapack>
+  </category>
+  <category name="Library">
     <reapack name="tk-gui-tools.jsfx" type="effect" desc="tk-gui-tools (GUI library, not an effect)">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
@@ -50,14 +52,14 @@
 \widowctrl\hyphauto
 
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel0 \b \fs34 tk-gui-tools\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 The JSFX library that draws the GUIs of the effects in this repository (A-Lift, P-Clip). Install it once, next to the effects; it is shared by all of them.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 The JSFX library that draws the GUIs of the effects in this repository (A-Lift, P-Clip). Install it once; it is shared by all of them, whatever category they are in.\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 This package installs only tk_gui_tools.jsfx-inc. The library is written by John Matthews (Tukan Studios) and is redistributed here with his permission; its terms are at the top of that file. The full archive, with examples and documentation, is at https://stash.reaper.fm/v/53055/tk-gui-tools.zip\par}
 }
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="John Matthews (Tukan Studios)" time="2026-10-14T00:48:08Z">
+      <version name="1.0.0" author="John Matthews (Tukan Studios)" time="2026-10-14T01:18:13Z">
         <changelog><![CDATA[Initial package: tk_gui_tools.jsfx-inc as in https://stash.reaper.fm/v/53055/tk-gui-tools.zip]]></changelog>
-        <source file="tk_gui_tools.jsfx-inc">https://github.com/sguyader/ReaperFX/raw/4cdca08a7b47010c9a799a19563cf6c895e07138/Dynamics/tk_gui_tools.jsfx-inc</source>
+        <source file="tk_gui_tools.jsfx-inc">https://github.com/sguyader/ReaperFX/raw/e558298ffbc478f5a85c9346cb29b401509236c3/Library/tk_gui_tools.jsfx-inc</source>
       </version>
     </reapack>
   </category>
