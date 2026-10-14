@@ -1,7 +1,7 @@
 desc: A-Lift (four-band encode lift)
 author: sguyader
 version: 1.0.1
-changelog: tk_gui_tools.jsfx-inc is no longer installed with the plugin; get it from https://stash.reaper.fm/v/53055/tk-gui-tools.zip (see About)
+changelog: tk_gui_tools.jsfx-inc is no longer installed with the plugin; install the "tk-gui-tools" package from this repository as well (see About)
 about:
   # A-Lift
   Four-band "encode-only" lift, in the spirit of running a source through an
