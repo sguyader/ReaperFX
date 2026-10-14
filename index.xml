@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="ReaperFX" commit="e558298ffbc478f5a85c9346cb29b401509236c3">
+<index version="1" name="ReaperFX" commit="6988b9f0b658e220298c5e7ac81e5d5d4915fe13">
   <category name="Dynamics">
     <reapack name="A-Lift.jsfx" type="effect" desc="A-Lift (four-band encode lift)">
       <metadata>
@@ -20,8 +20,8 @@
         <source file="tk_gui_tools.jsfx-inc">https://github.com/sguyader/ReaperFX/raw/f0e10db8e06ac54d03c6a80532e66a72b73e5337/Dynamics/tk_gui_tools.jsfx-inc</source>
       </version>
       <version name="1.0.1" author="sguyader" time="2026-10-13T19:44:45Z">
-        <changelog><![CDATA[tk_gui_tools.jsfx-inc is no longer installed with the plugin; get it from https://stash.reaper.fm/v/53055/tk-gui-tools.zip (see About)]]></changelog>
-        <source>https://github.com/sguyader/ReaperFX/raw/8d0bc1262f65020040d4e0156c8f7002bea44a70/Dynamics/A-Lift.jsfx</source>
+        <changelog><![CDATA[tk_gui_tools.jsfx-inc is no longer installed with the plugin; install the "tk-gui-tools" package from this repository as well (see About)]]></changelog>
+        <source>https://github.com/sguyader/ReaperFX/raw/6988b9f0b658e220298c5e7ac81e5d5d4915fe13/Dynamics/A-Lift.jsfx</source>
       </version>
     </reapack>
     <reapack name="P-Clip.jsfx" type="effect" desc="P-Clip (parabolic-knee clipper)">
@@ -38,9 +38,9 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="Le Seuil Studio" time="2026-10-13T19:44:45Z">
+      <version name="1.0.0" author="sguyader" time="2026-10-13T19:44:45Z">
         <changelog><![CDATA[Initial release]]></changelog>
-        <source>https://github.com/sguyader/ReaperFX/raw/572ae0ee011630db52b19868336af6b3d9334477/Dynamics/P-Clip.jsfx</source>
+        <source>https://github.com/sguyader/ReaperFX/raw/6988b9f0b658e220298c5e7ac81e5d5d4915fe13/Dynamics/P-Clip.jsfx</source>
       </version>
     </reapack>
   </category>
